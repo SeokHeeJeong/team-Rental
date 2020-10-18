@@ -1,0 +1,61 @@
+#get deploy delivery -n team-rent -o yaml > delivery_deploy.yaml
+#
+apiVersion: product/v1
+kind: Deployment
+# Object Type
+metadata:
+  name: product-deployment
+spec:
+  selector:
+    matchLabels:
+      run: team-rent
+
+  replicas: 3
+  # minReadySeconds: 5
+  template:
+    metadata:
+      labels:
+        run: team-rent
+    spec:
+      containers:
+        - name: con-product
+          image: k8s.gcr.io/hpa-example
+          # 263165917154.dkr.ecr.ap-northeast-2.amazonaws.com/skccuser-cna-delivery:v1
+          # ECR Repository URL
+          ports:
+            - containerPort: 8080
+          resources: #HPA
+            limits:
+              cpu: 500m
+              #memory: 64Mi
+            requests:
+              cpu: 200m
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /Product
+              port: 8080
+              httpHeaders:
+              - name: X-Custom-Header
+                value: Awesome
+            initialDelaySeconds: 3
+            periodSeconds: 3
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: product-svc
+  namespace: team-rent
+spec:
+  selector:
+    app: blue-nginx
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+  type: NodePort
